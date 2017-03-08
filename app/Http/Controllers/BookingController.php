@@ -404,14 +404,81 @@ class BookingController extends Controller {
             
             $reservation_info['reservation_timestamp'] = "{$reservation_info['reservation_date']} {$reservation_info['reservation_time']}:00";
 
+            $reservation_info['reservation_code']=rand(100000,999999);
+
             $reservation = new Reservation($reservation_info);
             $reservation->status = Reservation::CONFIRMED;//
             $reservation->save();
+
+            //send out an SMS
+            $message="Your reservation at ". $reservation_info['outlet_name']. " on ".$reservation_info['reservation_timestamp']. " has been received. \nReservation code: ".  $reservation_info['reservation_code'];
+            $this->sendOverHoiio($reservation_info['phone'],$message,"SPIZE");
 
             //return $reservation_info;
             return view('reservations.booking-summary')->with(compact('reservation'));
         }
         
         return view('reservations.booking-form-2')->with(compact('reservation_info'));
+    }
+
+    private function _padTelephone($telephone){
+        if (substr($telephone,0,3)!="+65"){
+            if (substr($telephone,0,2)!="65"){
+                $telephone="+65".$telephone;
+            }else{
+                $telephone="+".$telephone;
+            }
+        }
+        return $telephone;
+    }
+    private function sendOverHoiio($telephone,$message,$sender_name){
+
+        //pad the phone number
+
+        $telephone=$this->_padTelephone($telephone);
+
+
+
+        $hoiioAppId = "n0rwoAWlLNvTZpXo";
+        $hoiioAccessToken = "OsiquwPsGPkpXrxV";
+        $sendSmsURL = "https://secure.hoiio.com/open/sms/send";
+        $fields = array(
+            'app_id' => urlencode($hoiioAppId),
+            'access_token' => urlencode($hoiioAccessToken),
+            'dest' => urlencode($telephone),     // send SMS to this phone
+
+            'msg' => urlencode($message),                // message content in SMS
+            'sender_name'=>$sender_name
+        );
+
+        // form up variables in the correct format for HTTP POST
+        $fields_string = "";
+        foreach($fields as $key => $value)
+            $fields_string .= $key . '=' . $value . '&';
+
+        $fields_string = rtrim($fields_string,'&');
+
+        /* initialize cURL */
+        $ch = curl_init();
+
+        /* set options for cURL */
+        curl_setopt($ch, CURLOPT_URL, $sendSmsURL);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
+
+        /* execute HTTP POST request */
+        $raw_result = curl_exec($ch);
+        $result = json_decode($raw_result);     // parse JSON formatted result
+
+        /* close connection */
+        curl_close($ch);
+
+
+        if($result->status == "success_ok") {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

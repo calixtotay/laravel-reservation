@@ -6,7 +6,7 @@
         @component('reservations.header')
             @slot('title')
                 <span class="r-name"><a href="{{ url('') }}" target="_blank">Spize (Bedok)</a></span>
-                <p class="sub">Your reservation has been made! <br>A confirmation email has been sent.</p>
+                <p class="sub">Your reservation has been made! <br>A confirmation SMS has been sent.</p>
             @endslot
         @endcomponent
         <div id="reservation-details" class="content legend">
